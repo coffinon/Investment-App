@@ -1,37 +1,55 @@
 import React from "react"
+import CryptoRanking from "./CryptoRanking"
 
 function CryptoPriceFeed() {
-  const [cryptoPrices, setCryptoPrices] = React.useState([])
+  const [cryptoData, setCryptoData] = React.useState([])
 
+  /* Fetch crypto data fron CoinCap API during first load of the application */
   React.useEffect(() => {
-    async function fetchCoinData(coinName) {
-      const response = await fetch(`https://api.coingecko.com/api/v3/coins/${coinName}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false`)
-      const data = await response.json()
-      const coinData = {
-        name: data.symbol,
-        price: data.market_data.current_price.usd
-      }
-
-      setCryptoPrices(prevCryptoPrices => [...prevCryptoPrices, coinData])
-    }
-
-    setCryptoPrices([])
-    fetchCoinData("bitcoin")
-    fetchCoinData("ethereum")
-    fetchCoinData("binancecoin")
+    fetch("https://api.coincap.io/v2/assets")
+      .then(response => response.json())
+      .then(data => setCryptoData(getFromattedCryptoData(data)))
   }, [])
 
-  const mappedPriceFeed = cryptoPrices.map((coin, index) => (
-      <div className="crypto-price-feed--coin" key={index}>
-        <h1>{coin.name} / usd</h1>
-        <p>{coin.price}</p>
-      </div>
-    )
-  )
+  /* Helper function responsible for parsing data fetched from the CoinCap API */
+  function getFromattedCryptoData(crypto) {
+    return crypto.data.map(element => (
+      {
+        id: element.id,
+        rank: element.rank,
+        name: `[${element.symbol}] ${element.name}`,
+        priceUsd: `$${parseFloat(element.priceUsd).toFixed(2)}`,
+        marketCapUsd: getFormattedMarketCap(element.marketCapUsd),
+        changePercent24Hr: Number(parseFloat(element.changePercent24Hr).toFixed(2))
+      }
+    ))
+  }
+
+  /* Helper function responsible for formatting the market cap data 
+  *  NOTE: I will refactor this later, to make it drier
+  */
+  function getFormattedMarketCap(marketCap) {
+    let tempMarketCap = parseInt(marketCap)
+
+    switch(tempMarketCap.toString().length) {
+      case 9: 
+        tempMarketCap = `$${(marketCap / 1000000).toFixed(0)}mln`
+        break
+      case 10:
+        tempMarketCap = `$${(marketCap / 1000000000).toFixed(2)}mld`
+        break
+      case 11:
+        tempMarketCap = `$${(marketCap / 1000000000).toFixed(1)}mld`
+        break
+      case 12:
+        tempMarketCap = `$${(marketCap / 1000000000).toFixed(0)}mld`
+    }
+    return tempMarketCap
+  }
   
   return (
     <div className="crypto-price-feed">
-      {mappedPriceFeed}
+      <CryptoRanking cryptoData={cryptoData}/>
     </div>
   )
 }
